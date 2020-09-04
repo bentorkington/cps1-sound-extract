@@ -6,6 +6,10 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "bin": {
+    "cps1-extract-samples": "bin/extract-samples.js",
+    "cps1-extract-tune": "bin/extract-tune.js"
+  },
   "author": "Ben Torkington <ben@torkington.com>",
   "license": "ISC",
   "dependencies": {
