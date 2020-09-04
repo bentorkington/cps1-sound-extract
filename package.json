@@ -12,5 +12,22 @@
     "binary-file": "^0.2.1",
     "chalk": "^3.0.0",
     "midi-writer-js": "^1.7.2"
+  },
+  "eslintConfig": {
+    "extends": "airbnb-base",
+    "env": {
+      "commonjs": true,
+      "node": true,
+      "mocha": true
+    },
+    "rules": {
+      "no-console": "off",
+      "import/no-extraneous-dependencies": [
+        "error",
+        {
+          "devDependencies": true
+        }
+      ]
+    }
   }
 }
