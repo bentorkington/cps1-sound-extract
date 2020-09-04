@@ -1,13 +1,10 @@
 #!/usr/bin/env node
 
-const BinaryFile = require('binary-file');
 const MidiWriter = require('midi-writer-js');
 const fs = require('fs');
 const chalk = require('chalk');
 
 const layout = require('../games/sf2ua.json');
-
-const audioRom = new BinaryFile('./sf2_09.bin', 'r');
 
 let tracks = [];
 const takeJumps = false;
@@ -15,36 +12,32 @@ const takeJumps = false;
 const notes = "C C# D D# E F F# G G# A A# B".split(' ');
 const durations = "64 64 32 16 8 4 2 1".split(' ');
 
-async function convertSong(file, songid) {
+async function convertSong(layout, songid) {
   try {
-    await file.open();
+    const tuneRom = fs.readFileSync(layout.audioRom);
     console.log("file opened");
-    const posn = await file.seek(0x1106 + (2 * songid));
-    console.log("Position: 0x" + posn.toString(16));
-    const res = await file.readUInt16();
-    console.log("Address: 0x" + res.toString(16));
-    await file.seek(res);
-    const type = await file.readUInt8();
+    const trackAddr = tuneRom.readUInt16BE(parseInt(layout.songs, 16) + (2 * songid));
+    console.log("Address: 0x" + trackAddr.toString(16));
+
+    const type = tuneRom.readInt8(trackAddr);
     console.log("Type: " + type);
     for (let i=0; i<12; i++) {
-      tracks.push(await file.readUInt16());  
+      tracks.push(tuneRom.readUInt16BE(trackAddr + (i * 2) + 1));  
     }
     console.log(tracks);
 
-    // const midiTracks = tracks.map((t) => {
-    //   return await convertTrack(file, t);
-    // });
     const midiTracks = [];
 
     for (var i = 0; i<8; ++i) {
       console.log(chalk.yellow(`##########  TRACK ${i}`));
-      midiTracks[i] = await convertTrack(file, tracks[i]);
+      midiTracks[i] = await convertTrack(tuneRom, tracks[i]);
     }
+    // todo: convert four sample tracks
 
     var writer = new MidiWriter.Writer(midiTracks);
     var fileBytes = writer.buildFile();
 
-    fs.writeFile('out.mid', fileBytes, (err) => {
+    fs.writeFile(`track-${songid}.mid`, fileBytes, (err) => {
       if (err) throw err;
       console.log("It's saved!");
     });
@@ -53,11 +46,11 @@ async function convertSong(file, songid) {
   }
 }
 
-async function convertTrack(file, base) {
+async function convertTrack(tuneRom, base) {
   const midiTrack = new MidiWriter.Track();
 
   try {
-    await file.seek(base);
+    let posn = base;
     let run = true;
     let elapsed = 1;
     let restTime = [];
@@ -72,8 +65,10 @@ async function convertTrack(file, base) {
     }
 
     while (run) {
-      instaddr = await file.tell();
-      const instruction = await file.readUInt8();
+      instaddr = posn;
+      const instruction = tuneRom.readUInt8(posn);
+      posn++;
+
       if (instruction >= 0x20) {
         const duration = ((instruction & 0xe0) >> 5) - 1;
         const note = (instruction & 0x1f) + noteOffset;
@@ -113,41 +108,52 @@ async function convertTrack(file, base) {
             debug(`OKI_03`);
             break;
           case 0x04:
-            debug(`OKI_04 ${await file.readUInt8()}`);
+            debug(`OKI_04 ${tuneRom.readUInt8(posn)}`);
+            posn += 1;
             break;
           case 0x05:  // GOTO?
-            debug(`OKI_05 ${await file.readUInt16()}`);
+            debug(`OKI_05 ${tuneRom.readUInt16BE(posn)}`);
+            posn += 2;
             break;
           case 0x06:
-            debug(`OKI_06 ${await file.readUInt8()}`);
+            debug(`OKI_06 ${tuneRom.readUInt8(posn)}`);
+            posn += 1;
             break;
           case 0x07:
-            noteOffset = 192 - await file.readUInt8();  
+            noteOffset = 192 - tuneRom.readUInt8(posn);  
+            posn += 1;
             //debug(`OKI_07 note offset is ${noteOffset}`);
             
             break;
           case 0x08:
-            var instrument = await file.readUInt8();
+            var instrument = tuneRom.readUInt8(posn);
+            posn += 1;
+
             console.log(`Instrument is ${instrument}`);
-            midiTrack.addEvent(new MidiWriter.ProgramChangeEvent({instrument: 1}));
+            midiTrack.addEvent(new MidiWriter.ProgramChangeEvent({instrument: 1})); // todo
             break;
           case 0x09:
-            debug(`OKI_09 ${await file.readUInt8()}`);
+            debug(`OKI_09 ${tuneRom.readUInt8(posn)}`);
+            posn += 1;
             break;
 
           case 0x0a:
-            debug(`OKI_${instruction.toString(16)} ${await file.readUInt8()}`);
+            debug(`OKI_${instruction.toString(16)} ${tuneRom.readUInt8(posn)}`);
+            posn += 1;
             break;
           case 0x0b:
-            debug(`OKI_${instruction.toString(16)} ${await file.readUInt8()}`); // guessed
+            debug(`OKI_${instruction.toString(16)} ${tuneRom.readUInt8(posn)}`); // guessed
+            posn += 1;
             break;
           case 0x0c: 
-            debug(`OKI_${instruction.toString(16)} ${await file.readUInt8()}`); // guessed
+            debug(`OKI_${instruction.toString(16)} ${tuneRom.readUInt8(posn)}`); // guessed
+            posn += 1;
             break;
 
-    
           case 0x0d:
-            var oki_d = await file.readUInt8();
+            var oki_d = tuneRom.readUInt8(posn);
+            posn += 1;
+
             debug(`OKI_0D 0x${oki_d.toString(16)}`);
             break;
 
@@ -163,8 +169,10 @@ async function convertTrack(file, base) {
             var repRegIndex = (instruction - 0xe) % 4;
             
 
-            var p = await file.readUInt8();
-            var addr = await file.readUInt16();
+            var p = tuneRom.readUInt8(posn);
+            posn += 1;
+            var addr = tuneRom.readUInt16BE(posn);
+            posn += 2;
             debug(`${chalk.green("OKI_JUMP")} ${instruction.toString(16)} ${p} jump ${addr.toString(16)} reg ${repeats[repRegIndex]}`);
 
             if (instruction > 0x11) {
@@ -172,26 +180,27 @@ async function convertTrack(file, base) {
                 repeats[repRegIndex] -= 1
                 // do YAMA_CMD_04 for p
                 if (takeJumps)
-                  await file.seek(addr);
+                  posn = addr;
               } 
             } else {
               if (repeats[repRegIndex]) {
                 repeats[repRegIndex] -= 1;
                 if (repeats[repRegIndex]) {
                   if (takeJumps)
-                  await file.seek(addr);
+                  posn = addr;
                 }
               } else {
                 repeats[repRegIndex] = p;
                 if (takeJumps)
-                  await file.seek(addr);    
+                  posn = addr;
               }
             }
 
             break;
 
           case 0x16:
-            const loop = await file.readUInt16();
+            const loop = tuneRom.readUInt16BE(posn);
+            posn += 2;
             console.log(`Loop back to 0x${loop.toString(16)}`);
             break;
 
@@ -201,16 +210,18 @@ async function convertTrack(file, base) {
             break;
 
           case 0x18:
-            await file.readUInt8(); // just skips a byte
+            tuneRom.readUInt8(posn); // just skips a byte
+            posn += 1;
             break;
 
           case 0x19:
-            debug(`OKI_${instruction.toString(16)} ${await file.readUInt8()}`); // saves the byte in struct_d200.0x14
+            debug(`OKI_${instruction.toString(16)} ${tuneRom.readUInt8(posn)}`); // saves the byte in struct_d200.0x14
+            posn += 1;
             break;
 
-
           case 0x1a:
-            debug(`OKI_${instruction.toString(16)} ${await file.readUInt8()}`); // guessed
+            debug(`OKI_${instruction.toString(16)} ${tuneRom.readUInt8(posn)}`); // guessed
+            posn += 1;
             break;
 
           default:
@@ -226,7 +237,7 @@ async function convertTrack(file, base) {
   }
 }
 
-convertSong(audioRom, 0xb );
+convertSong(layout, 0xb );
 
 
 

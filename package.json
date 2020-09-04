@@ -9,7 +9,6 @@
   "author": "Ben Torkington <ben@torkington.com>",
   "license": "ISC",
   "dependencies": {
-    "binary-file": "^0.2.1",
     "chalk": "^3.0.0",
     "midi-writer-js": "^1.7.2"
   },
