@@ -93,36 +93,36 @@ async function convertTrack(tuneRom, base) {
         // midiTrack.addMarker(`Instruction ${instruction.toString(16)}`);
         switch (instruction) {
           case 0x00:
-            debug(`OKI_00`);
+            debug(`YAM_00`);
             // flip 0x2, bit 0x20
             break;
           case 0x01:
-            debug(`OKI_01`);
+            debug(`YAM_01`);
             // flip 0x2, bit 0x40
             break;
           case 0x02:
-            debug(`OKI_02`);
+            debug(`YAM_02`);
             increaseByHalf  = true;
             break;
           case 0x03:
-            debug(`OKI_03`);
+            debug(`YAM_03`);
             break;
           case 0x04:
-            debug(`OKI_04 ${tuneRom.readUInt8(posn)}`);
+            debug(`YAM_04 ${tuneRom.readUInt8(posn)}`);
             posn += 1;
             break;
           case 0x05:  // GOTO?
-            debug(`OKI_05 ${tuneRom.readUInt16BE(posn)}`);
+            debug(`YAM_05 ${tuneRom.readUInt16BE(posn)}`);
             posn += 2;
             break;
           case 0x06:
-            debug(`OKI_06 ${tuneRom.readUInt8(posn)}`);
+            debug(`YAM_06 ${tuneRom.readUInt8(posn)}`);
             posn += 1;
             break;
           case 0x07:
             noteOffset = 192 - tuneRom.readUInt8(posn);  
             posn += 1;
-            //debug(`OKI_07 note offset is ${noteOffset}`);
+            //debug(`YAM_07 note offset is ${noteOffset}`);
             
             break;
           case 0x08:
@@ -133,20 +133,20 @@ async function convertTrack(tuneRom, base) {
             midiTrack.addEvent(new MidiWriter.ProgramChangeEvent({instrument: 1})); // todo
             break;
           case 0x09:
-            debug(`OKI_09 ${tuneRom.readUInt8(posn)}`);
+            debug(`YAM_09 ${tuneRom.readUInt8(posn)}`);
             posn += 1;
             break;
 
           case 0x0a:
-            debug(`OKI_${instruction.toString(16)} ${tuneRom.readUInt8(posn)}`);
+            debug(`YAM_${instruction.toString(16)} ${tuneRom.readUInt8(posn)}`);
             posn += 1;
             break;
           case 0x0b:
-            debug(`OKI_${instruction.toString(16)} ${tuneRom.readUInt8(posn)}`); // guessed
+            debug(`YAM_${instruction.toString(16)} ${tuneRom.readUInt8(posn)}`); // guessed
             posn += 1;
             break;
           case 0x0c: 
-            debug(`OKI_${instruction.toString(16)} ${tuneRom.readUInt8(posn)}`); // guessed
+            debug(`YAM_${instruction.toString(16)} ${tuneRom.readUInt8(posn)}`); // guessed
             posn += 1;
             break;
 
@@ -154,7 +154,7 @@ async function convertTrack(tuneRom, base) {
             var oki_d = tuneRom.readUInt8(posn);
             posn += 1;
 
-            debug(`OKI_0D 0x${oki_d.toString(16)}`);
+            debug(`YAM_0D 0x${oki_d.toString(16)}`);
             break;
 
             // these are identical
@@ -173,7 +173,7 @@ async function convertTrack(tuneRom, base) {
             posn += 1;
             var addr = tuneRom.readUInt16BE(posn);
             posn += 2;
-            debug(`${chalk.green("OKI_JUMP")} ${instruction.toString(16)} ${p} jump ${addr.toString(16)} reg ${repeats[repRegIndex]}`);
+            debug(`${chalk.green("YAM_JUMP")} ${instruction.toString(16)} ${p} jump ${addr.toString(16)} reg ${repeats[repRegIndex]}`);
 
             if (instruction > 0x11) {
               if (repeats[repRegIndex] == 1) {
@@ -215,12 +215,12 @@ async function convertTrack(tuneRom, base) {
             break;
 
           case 0x19:
-            debug(`OKI_${instruction.toString(16)} ${tuneRom.readUInt8(posn)}`); // saves the byte in struct_d200.0x14
+            debug(`YAM_${instruction.toString(16)} ${tuneRom.readUInt8(posn)}`); // saves the byte in struct_d200.0x14
             posn += 1;
             break;
 
           case 0x1a:
-            debug(`OKI_${instruction.toString(16)} ${tuneRom.readUInt8(posn)}`); // guessed
+            debug(`YAM_${instruction.toString(16)} ${tuneRom.readUInt8(posn)}`); // guessed
             posn += 1;
             break;
 
