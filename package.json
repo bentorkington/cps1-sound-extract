@@ -1,11 +1,16 @@
 {
-  "name": "sf2-sound-export",
+  "name": "cps1-sound-extract",
   "version": "1.0.0",
-  "description": "",
+  "description": "Export MIDI and samples from CPS1 game roms",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
-  "license": "ISC"
+  "author": "Ben Torkington <ben@torkington.com>",
+  "license": "ISC",
+  "dependencies": {
+    "binary-file": "^0.2.1",
+    "chalk": "^3.0.0",
+    "midi-writer-js": "^1.7.2"
+  }
 }

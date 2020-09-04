@@ -1,0 +1,7 @@
+{
+    "songs": "0x1106",
+    "instruments": "0x121e",
+    "samples": "0x221e",
+    "audioRom": "sf2_09.bin",
+    "sampleRoms": ["sf2_18.bin", "sf2_19.bin"]
+}
