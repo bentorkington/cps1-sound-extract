@@ -3,8 +3,7 @@
 const MidiWriter = require('midi-writer-js');
 const fs = require('fs');
 const chalk = require('chalk');
-
-const layout = require('../games/sf2ua.json');
+const program = require('commander');
 
 let tracks = [];
 const takeJumps = false;
@@ -28,19 +27,29 @@ async function convertSong(layout, songid) {
 
     const midiTracks = [];
 
-    for (var i = 0; i<8; ++i) {
-      console.log(chalk.yellow(`##########  TRACK ${i}`));
-      midiTracks[i] = await convertTrack(tuneRom, tracks[i]);
+    if (program.track) {
+      if (program.track < 8) {
+        midiTracks[program.track] = await convertTrack(tuneRom, tracks[i]);
+      } else {
+        // todo Oki
+      }
+    } else {
+      for (var i = 0; i<8; ++i) {
+        console.log(chalk.yellow(`##########  TRACK ${i}`));
+        midiTracks[i] = await convertTrack(tuneRom, tracks[i]);
+      }
+      // todo: convert four sample tracks  
     }
-    // todo: convert four sample tracks
 
-    var writer = new MidiWriter.Writer(midiTracks);
-    var fileBytes = writer.buildFile();
+    if (program.saveMidi) {
+      const filename = program.saveMidi === true ? `track-${songid}.mid` : program.saveMidi;
+  
+      fs.writeFile(filename, new MidiWriter.Writer(midiTracks).buildFile(), (err) => {
+        if (err) throw err;
+        console.log(`saved MIDI to ${filename}`);
+      });
+    }
 
-    fs.writeFile(`track-${songid}.mid`, fileBytes, (err) => {
-      if (err) throw err;
-      console.log("It's saved!");
-    });
   } catch (err) { 
     console.log(`There was an error: ${err}`);
   }
@@ -61,7 +70,7 @@ async function convertTrack(tuneRom, base) {
     let instaddr = 0;
 
     const debug = (str) => {
-      console.log(`${instaddr.toString(16)} ${str} @ ${elapsed}`);
+      if (program.dump) console.log(`${instaddr.toString(16)} ${str} @ ${elapsed}`);
     }
 
     while (run) {
@@ -129,7 +138,7 @@ async function convertTrack(tuneRom, base) {
             var instrument = tuneRom.readUInt8(posn);
             posn += 1;
 
-            console.log(`Instrument is ${instrument}`);
+            debug(`Instrument is ${instrument}`);
             midiTrack.addEvent(new MidiWriter.ProgramChangeEvent({instrument: 1})); // todo
             break;
           case 0x09:
@@ -201,12 +210,12 @@ async function convertTrack(tuneRom, base) {
           case 0x16:
             const loop = tuneRom.readUInt16BE(posn);
             posn += 2;
-            console.log(`Loop back to 0x${loop.toString(16)}`);
+            debug(`Loop back to 0x${loop.toString(16)}`);
             break;
 
           case 0x17:
             run = false;
-            console.log("End of track");
+            debug("End of track");
             break;
 
           case 0x18:
@@ -237,7 +246,19 @@ async function convertTrack(tuneRom, base) {
   }
 }
 
-convertSong(layout, 0xb );
+program.version('0.0.1')
+  .arguments('<game> <song>')
+  .option('-m, --save-midi [filename]', 'save MIDI output to `filename` (defaults to track-`number`.mid)')
+  .option('-d, --dump', 'dump instructions', false)
+  .option('-t, --track <track>', 'process only <track>')
+  .action((game, songString, options) => {
+    const layout = require(`../games/${game}.json`);
+    const song = parseInt(songString);
+
+    convertSong(layout, song);
+  });
+
+program.parse(process.argv);
 
 
 
