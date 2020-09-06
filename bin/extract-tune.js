@@ -23,7 +23,7 @@ async function convertSong(layout, songid) {
     for (let i=0; i<12; i++) {
       tracks.push(tuneRom.readUInt16BE(trackAddr + (i * 2) + 1));  
     }
-    console.log(tracks);
+    console.log(tracks.map((x) => `0x${x.toString(16)}`));
 
     const midiTracks = [];
 
