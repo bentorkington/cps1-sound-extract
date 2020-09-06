@@ -29,7 +29,8 @@ async function convertSong(layout, songid) {
 
     if (program.track) {
       if (program.track < 8) {
-        midiTracks[program.track] = await convertTrack(tuneRom, tracks[i]);
+        console.log(chalk.yellow(`##########  TRACK ${program.track}`));
+        midiTracks[program.track] = await convertTrack(tuneRom, tracks[program.track]);
       } else {
         // todo Oki
       }
