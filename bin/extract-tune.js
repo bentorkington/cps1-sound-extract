@@ -9,7 +9,7 @@ let tracks = [];
 const takeJumps = false;
 
 const notes = "C C# D D# E F F# G G# A A# B".split(' ');
-const durations = "64 64 32 16 8 4 2 1".split(' ');
+const durations = "16 16 8 4 2 1 0.5 0.25".split(' ');
 
 async function convertSong(layout, songid) {
   try {
