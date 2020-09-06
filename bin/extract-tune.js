@@ -66,12 +66,17 @@ async function convertTrack(tuneRom, base) {
     let restTime = [];
     let noteOffset = 40;
     let increaseByHalf = false;
-    let repeats = [1, 1, 1, 1]
+    let repeats = [1, 1, 1, 1];
+    const [timeUpper, timeLower] = program.timeSignature.split('/').map((x) => parseInt(x, 10));
+    midiTrack.setTimeSignature(timeUpper, timeLower);
 
     let instaddr = 0;
 
+    let bar = 1;
+    let beat = 1;
+
     const debug = (str) => {
-      if (program.dump) console.log(`${instaddr.toString(16)} ${str} @ ${elapsed}`);
+      if (program.dump) console.log(`${instaddr.toString(16)} ${str} @ ${chalk.yellow(`${bar}.${beat}`)}`);
     }
 
     while (run) {
@@ -80,24 +85,31 @@ async function convertTrack(tuneRom, base) {
       posn++;
 
       if (instruction >= 0x20) {
-        const duration = ((instruction & 0xe0) >> 5) - 1;
+        const duration = durations[((instruction & 0xe0) >> 5) - 1];
         const note = (instruction & 0x1f) + noteOffset;
         const octave = Math.trunc(note / 12) - 2;
 
         if ((instruction & 0x1f) == 0) {
-          restTime.push(durations[duration]);
-          debug(`⌘ ${durations[duration]}`);
+          restTime.push(duration);
+          debug(`⌘     ${duration}`);
         } else {
-          debug(`♩ ${notes[note % 12]}${octave} ${durations[duration]} ` );
+          const noteString = `${notes[note % 12]}${octave}`
+          debug(`♩ ${chalk.red(noteString.padEnd(3, ' '))} ${duration}` );
           var noteEvent = new MidiWriter.NoteEvent({
             pitch: note,
-            duration: durations[duration],
+            duration: duration,
             wait: restTime,
           });
           midiTrack.addEvent(noteEvent);
           restTime = [];
         }
-        elapsed += 1 / durations[duration];
+        elapsed += 1 / duration;
+        beat += 1 / (duration / timeLower);
+        while (beat > timeUpper) {
+          bar += 1;
+          beat -= timeUpper;
+          debug(chalk.yellow('---------------------'));
+        }
       } else {
         //console.log(`Instruction ${instruction.toString(16)} @ ${elapsed}`);
         // midiTrack.addMarker(`Instruction ${instruction.toString(16)}`);
@@ -244,6 +256,7 @@ async function convertTrack(tuneRom, base) {
     return midiTrack;
   } catch(err) {
     console.log(`There was an error: ${err}`);
+    console.log(err.stack)
   }
 }
 
@@ -252,6 +265,7 @@ program.version('0.0.1')
   .option('-m, --save-midi [filename]', 'save MIDI output to `filename` (defaults to track-`number`.mid)')
   .option('-d, --dump', 'dump instructions', false)
   .option('-t, --track <track>', 'process only <track>')
+  .option('-s, --time-signature <signature>', 'set the time signature (default 4/4)', '4/4')
   .action((game, songString, options) => {
     const layout = require(`../games/${game}.json`);
     const song = parseInt(songString);
