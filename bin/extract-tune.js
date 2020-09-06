@@ -79,6 +79,10 @@ async function convertTrack(tuneRom, base) {
       if (program.dump) console.log(`${instaddr.toString(16)} ${str} @ ${chalk.yellow(`${bar}.${beat}`)}`);
     }
 
+    const debugYamaInst = (inst, str) => {
+      debug(`${chalk.green(`YAM_${inst.toString(16).padStart(2, '0')}`)} ${str || ''}`);
+    }
+
     while (run) {
       instaddr = posn;
       const instruction = tuneRom.readUInt8(posn);
@@ -115,68 +119,65 @@ async function convertTrack(tuneRom, base) {
         // midiTrack.addMarker(`Instruction ${instruction.toString(16)}`);
         switch (instruction) {
           case 0x00:
-            debug(`YAM_00`);
+            debugYamaInst(instruction);
             // flip 0x2, bit 0x20
             break;
           case 0x01:
-            debug(`YAM_01`);
+            debugYamaInst(instruction);
             // flip 0x2, bit 0x40
             break;
           case 0x02:
-            debug(`YAM_02`);
+            debugYamaInst(instruction);
             increaseByHalf  = true;
             break;
           case 0x03:
-            debug(`YAM_03`);
+            debugYamaInst(instruction);
             break;
           case 0x04:
-            debug(`YAM_04 ${tuneRom.readUInt8(posn)}`);
+            debugYamaInst(instruction, tuneRom.readUInt8(posn));
             posn += 1;
             break;
           case 0x05:  // GOTO?
-            debug(`YAM_05 ${tuneRom.readUInt16BE(posn)}`);
+            debugYamaInst(instruction, tuneRom.readUInt16BE(posn));
             posn += 2;
             break;
           case 0x06:
-            debug(`YAM_06 ${tuneRom.readUInt8(posn)}`);
+            debugYamaInst(instruction, tuneRom.readUInt8(posn));
             posn += 1;
             break;
           case 0x07:
             noteOffset = 192 - tuneRom.readUInt8(posn);  
             posn += 1;
-            //debug(`YAM_07 note offset is ${noteOffset}`);
-            
+            debugYamaInst(instruction, `note offset is ${noteOffset}`);
             break;
           case 0x08:
             var instrument = tuneRom.readUInt8(posn);
             posn += 1;
-
-            debug(`Instrument is ${instrument}`);
+            debugYamaInst(instruction, `Instrument is ${instrument}`);
             midiTrack.addEvent(new MidiWriter.ProgramChangeEvent({instrument: 1})); // todo
             break;
           case 0x09:
-            debug(`YAM_09 ${tuneRom.readUInt8(posn)}`);
+            debugYamaInst(instruction, tuneRom.readUInt8(posn));
             posn += 1;
             break;
 
           case 0x0a:
-            debug(`YAM_${instruction.toString(16)} ${tuneRom.readUInt8(posn)}`);
+            debugYamaInst(instruction, tuneRom.readUInt8(posn));
             posn += 1;
             break;
           case 0x0b:
-            debug(`YAM_${instruction.toString(16)} ${tuneRom.readUInt8(posn)}`); // guessed
+            debugYamaInst(instruction, tuneRom.readUInt8(posn)); // guessed
             posn += 1;
             break;
-          case 0x0c: 
-            debug(`YAM_${instruction.toString(16)} ${tuneRom.readUInt8(posn)}`); // guessed
+          case 0x0c:
+            debugYamaInst(instruction, tuneRom.readUInt8(posn)); // guessed
             posn += 1;
             break;
 
           case 0x0d:
+            debugYamaInst(instruction, tuneRom.readUInt8(posn));
             var oki_d = tuneRom.readUInt8(posn);
             posn += 1;
-
-            debug(`YAM_0D 0x${oki_d.toString(16)}`);
             break;
 
             // these are identical
@@ -232,17 +233,17 @@ async function convertTrack(tuneRom, base) {
             break;
 
           case 0x18:
-            tuneRom.readUInt8(posn); // just skips a byte
+            debugYamaInst(instruction, tuneRom.readUInt8(posn)); // saves the byte in struct_d200.0x14
             posn += 1;
             break;
 
           case 0x19:
-            debug(`YAM_${instruction.toString(16)} ${tuneRom.readUInt8(posn)}`); // saves the byte in struct_d200.0x14
+            debugYamaInst(instruction, tuneRom.readUInt8(posn)); // saves the byte in struct_d200.0x14
             posn += 1;
             break;
 
           case 0x1a:
-            debug(`YAM_${instruction.toString(16)} ${tuneRom.readUInt8(posn)}`); // guessed
+            debugYamaInst(instruction, tuneRom.readUInt8(posn)); // guessed
             posn += 1;
             break;
 
