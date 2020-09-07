@@ -9,7 +9,7 @@ let tracks = [];
 const takeJumps = false;
 
 const notes = "C C# D D# E F F# G G# A A# B".split(' ');
-const durations = "16 16 8 4 2 1 0.5 0.25".split(' ');
+const durations = "64 64 32 16 8 4 2 1".split(' ');
 
 async function convertSong(layout, songid) {
   try {
@@ -28,16 +28,16 @@ async function convertSong(layout, songid) {
     const midiTracks = [];
 
     if (program.track) {
-      if (program.track < 8) {
+      if (program.track < 12) {
         console.log(chalk.yellow(`##########  TRACK ${program.track}`));
-        midiTracks[program.track] = await convertTrack(tuneRom, tracks[program.track]);
+        midiTracks[program.track] = await convertTrack(tuneRom, tracks[program.track], layout, program.track + 1);
       } else {
         // todo Oki
       }
     } else {
       for (var i = 0; i<8; ++i) {
         console.log(chalk.yellow(`##########  TRACK ${i}`));
-        midiTracks[i] = await convertTrack(tuneRom, tracks[i]);
+        midiTracks[i] = await convertTrack(tuneRom, tracks[i], layout, i+1);
       }
       // todo: convert four sample tracks  
     }
@@ -53,10 +53,11 @@ async function convertSong(layout, songid) {
 
   } catch (err) { 
     console.log(`There was an error: ${err}`);
+    console.log(err.stack);
   }
 }
 
-async function convertTrack(tuneRom, base) {
+async function convertTrack(tuneRom, base, layout, channel) {
   const midiTrack = new MidiWriter.Track();
 
   try {
@@ -103,6 +104,7 @@ async function convertTrack(tuneRom, base) {
             pitch: note,
             duration: duration,
             wait: restTime,
+            channel,
           });
           midiTrack.addEvent(noteEvent);
           restTime = [];
@@ -154,7 +156,8 @@ async function convertTrack(tuneRom, base) {
             var instrument = tuneRom.readUInt8(posn);
             posn += 1;
             debugYamaInst(instruction, `Instrument is ${instrument}`);
-            midiTrack.addEvent(new MidiWriter.ProgramChangeEvent({instrument: 1})); // todo
+            const midiInstrument = layout.instrumentMapping[instrument] || 1;
+            midiTrack.addEvent(new MidiWriter.ProgramChangeEvent({instrument: midiInstrument})); // todo
             break;
           case 0x09:
             debugYamaInst(instruction, tuneRom.readUInt8(posn));
