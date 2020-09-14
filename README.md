@@ -11,7 +11,22 @@ I'm currently testing this against Street Fighter II (sf2ua) ROMs. I plan for th
 
 I suspect most CPS1 sound ROMs will differ only in the tunes and samples, and the overall format of the stage tunes will be the same or similar. Please try different ROMs and let me know!
 
+## Installation
+
+### Requirements
+
+* Node.js
+* ROMs of games you want to work with
+
+### To install
+
+1. Download or clone this repo, and `cd` to it
+2. `npm install` # to get the dependencies
+3. `npm link` # (optional - installs symlinks for the tools in your `/usr/local/bin`)
+
 ## Examples
+
+Run these commands from a directory containing the game ROMs
 
 Dump Sagat's stage tune (number 11) from Street Fighter II World Warrior (sf2ua) to the terminal:
 
