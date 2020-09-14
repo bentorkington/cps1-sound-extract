@@ -14,9 +14,8 @@ const durations = "64 64 32 16 8 4 2 1".split(' ');
 async function convertSong(layout, songid) {
   try {
     const tuneRom = fs.readFileSync(layout.audioRom);
-    console.log("file opened");
     const trackAddr = tuneRom.readUInt16BE(parseInt(layout.songs, 16) + (2 * songid));
-    console.log("Address: 0x" + trackAddr.toString(16));
+    console.log("Track start address: 0x" + trackAddr.toString(16));
 
     const type = tuneRom.readInt8(trackAddr);
     console.log("Type: " + type);
@@ -67,7 +66,13 @@ async function convertTrack(tuneRom, base, layout, channel) {
     let restTime = [];
     let noteOffset = 40;
     let increaseByHalf = false;
-    let repeats = [1, 1, 1, 1];
+    let repeats = [0, 0, 0, 0];
+
+    let instrumentOffset = 0;
+    let noteshift = 0;
+    let octaveshift = 0;
+    let quindecisima = false;
+
     const [timeUpper, timeLower] = program.timeSignature.split('/').map((x) => parseInt(x, 10));
     midiTrack.setTimeSignature(timeUpper, timeLower);
 
@@ -91,18 +96,26 @@ async function convertTrack(tuneRom, base, layout, channel) {
 
       if (instruction >= 0x20) {
         const duration = durations[((instruction & 0xe0) >> 5) - 1];
-        const note = (instruction & 0x1f) + noteOffset;
-        const octave = Math.trunc(note / 12) - 2;
+        const dotDuration = duration;// increaseByHalf ? 'd'+duration : duration;
+
+        let note = (instruction & 0x1f) + noteshift + octaveshift + instrumentOffset + (quindecisima ? 24 : 0);
+        while (note < 0)
+          note += 12;
+
+        while (note > 0xcf)
+          note -= 12;
+
+        const octave = Math.trunc(note / 12) + 2;
 
         if ((instruction & 0x1f) == 0) {
-          restTime.push(duration);
-          debug(`⌘     ${duration}`);
+          restTime.push(dotDuration);
+          debug(`⌘     ${dotDuration}`);
         } else {
-          const noteString = `${notes[note % 12]}${octave}`
+          const noteString = `${note}: ${notes[note % 12]}${octave}`
           debug(`♩ ${chalk.red(noteString.padEnd(3, ' '))} ${duration}` );
           var noteEvent = new MidiWriter.NoteEvent({
             pitch: note,
-            duration: duration,
+            duration: dotDuration,
             wait: restTime,
             channel,
           });
@@ -117,73 +130,75 @@ async function convertTrack(tuneRom, base, layout, channel) {
           debug(chalk.yellow('---------------------'));
         }
       } else {
-        //console.log(`Instruction ${instruction.toString(16)} @ ${elapsed}`);
-        // midiTrack.addMarker(`Instruction ${instruction.toString(16)}`);
         switch (instruction) {
           case 0x00:
-            debugYamaInst(instruction);
+            debugYamaInst(instruction, 'TwoThirdsDelay');
             // flip 0x2, bit 0x20
             break;
           case 0x01:
-            debugYamaInst(instruction);
+            debugYamaInst(instruction, 'Portamento');
             // flip 0x2, bit 0x40
             break;
           case 0x02:
-            debugYamaInst(instruction);
+            debugYamaInst(instruction, 'Next note dotted');
             increaseByHalf  = true;
             break;
           case 0x03:
-            debugYamaInst(instruction);
+            debugYamaInst(instruction, 'Quindicesima');
+            quindecisima = !quindecisima;
             break;
           case 0x04:
-            debugYamaInst(instruction, tuneRom.readUInt8(posn));
+            debugYamaInst(instruction, `0x${tuneRom.readUInt8(posn).toString(16)}`);
             posn += 1;
             break;
-          case 0x05:  // GOTO?
+          case 0x05:  // set TuneA/B 0xd042/d048 from NN
             debugYamaInst(instruction, tuneRom.readUInt16BE(posn));
             posn += 2;
             break;
           case 0x06:
-            debugYamaInst(instruction, tuneRom.readUInt8(posn));
+            debugYamaInst(instruction, `= ${tuneRom.readUInt8(posn)}`);
             posn += 1;
             break;
           case 0x07:
-            noteOffset = 192 - tuneRom.readUInt8(posn);  
+            noteOffset = 127 - tuneRom.readUInt8(posn);
             posn += 1;
-            debugYamaInst(instruction, `note offset is ${noteOffset}`);
+            debugYamaInst(instruction, `Level = ${noteOffset}`);
             break;
           case 0x08:
             var instrument = tuneRom.readUInt8(posn);
             posn += 1;
-            debugYamaInst(instruction, `Instrument is ${instrument}`);
+            const instrumentLocation = 0x1102 + (instrument * 40);
+            instrumentOffset = tuneRom.readInt8(instrumentLocation);
+            debugYamaInst(instruction, `Instrument is ${instrument} pitch offset ${instrumentOffset}`);
             const midiInstrument = layout.instrumentMapping[instrument] || 1;
             midiTrack.addEvent(new MidiWriter.ProgramChangeEvent({instrument: midiInstrument})); // todo
             break;
           case 0x09:
-            debugYamaInst(instruction, tuneRom.readUInt8(posn));
+            octaveshift = tuneRom.readInt8(posn) * 12;
+            debugYamaInst(instruction, `OctaveShift ${octaveshift} semitones`);
             posn += 1;
             break;
-
           case 0x0a:
             debugYamaInst(instruction, tuneRom.readUInt8(posn));
             posn += 1;
             break;
           case 0x0b:
-            debugYamaInst(instruction, tuneRom.readUInt8(posn)); // guessed
+            noteshift = tuneRom.readUInt8(posn);
+            debugYamaInst(instruction, `NoteShift = ${noteshift}`); // guessed
             posn += 1;
             break;
           case 0x0c:
-            debugYamaInst(instruction, tuneRom.readUInt8(posn)); // guessed
+            debugYamaInst(instruction, `FractionOffset = ${tuneRom.readUInt8(posn)}`);
             posn += 1;
             break;
 
           case 0x0d:
-            debugYamaInst(instruction, tuneRom.readUInt8(posn));
+            debugYamaInst(instruction, `Portamento speed = ${tuneRom.readUInt8(posn)}`);
             var oki_d = tuneRom.readUInt8(posn);
             posn += 1;
             break;
 
-            // these are identical
+            // conditional branches
           case 0x0e:
           case 0x12: 
           case 0x0f:
@@ -236,7 +251,7 @@ async function convertTrack(tuneRom, base, layout, channel) {
             break;
 
           case 0x18:
-            debugYamaInst(instruction, tuneRom.readUInt8(posn)); // saves the byte in struct_d200.0x14
+            debugYamaInst(instruction, 'NOP');
             posn += 1;
             break;
 
