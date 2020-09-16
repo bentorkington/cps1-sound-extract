@@ -114,7 +114,7 @@ Two 4-bit samples are stored per-byte. The codec used is Dialogic ADPCM, and the
 
 Mutes all yamaha channels except 0
 
-`track = 0; bpset 2d3,b@d007 != track, {printf "muting channel %d", b@d007; a = 0x17; g;}`
+`temp0 = 0; bpset 2d3,b@d007 != temp0, {printf "muting channel %d", b@d007; a = 0x17; g;}`
 
 ### Conditional traces
 
