@@ -4,6 +4,7 @@ const MidiWriter = require('midi-writer-js');
 const fs = require('fs');
 const chalk = require('chalk');
 const program = require('commander');
+const { opts } = require('commander');
 
 let tracks = [];
 const takeJumps = false;
@@ -54,6 +55,17 @@ async function convertSong(layout, songid) {
     console.log(`There was an error: ${err}`);
     console.log(err.stack);
   }
+}
+
+function dump_instrument(rom, addr, instrument) {
+  const waveforms = ['Sawtooth', 'Square', 'Triangle', 'Noise',];
+
+  console.log(chalk.red(`Instrument ${instrument}`));
+  console.log(`pitch ${rom.readInt8(addr)}`);
+  const inst = rom.readUInt8(addr + 1);
+  console.log(`waveform ${waveforms[(inst & 0x60) >> 5]} (0x${inst.toString(16)})`);
+  console.log(`LFO freq 0x${rom.readUInt8(addr+2).toString(16)} Phase depth 0x${rom.readUInt8(addr+3).toString(16)} AM Depth 0x${rom.readUInt8(addr+4).toString(16)}`);
+  console.log(`ChanCtl 0x${rom.readUInt8(addr+5).toString(16)} PhaseAMSens ${rom.readUInt8(addr+6).toString(16)} KON Flags 0x${rom.readUInt8(addr+7).toString(16)}`);
 }
 
 async function convertTrack(tuneRom, base, layout, channel) {
@@ -172,6 +184,8 @@ async function convertTrack(tuneRom, base, layout, channel) {
             debugYamaInst(instruction, `Instrument is ${instrument} pitch offset ${instrumentOffset}`);
             const midiInstrument = layout.instrumentMapping[instrument] || 1;
             midiTrack.addEvent(new MidiWriter.ProgramChangeEvent({instrument: midiInstrument})); // todo
+            if (program.dumpInstruments)
+              dump_instrument(tuneRom, instrumentLocation, instrument);
             break;
           case 0x09:
             octaveshift = tuneRom.readInt8(posn) * 12;
@@ -283,6 +297,7 @@ program.version('0.0.1')
   .arguments('<game> <song>')
   .option('-m, --save-midi [filename]', 'save MIDI output to `filename` (defaults to track-`number`.mid)')
   .option('-d, --dump', 'dump instructions', false)
+  .option('-i, --dump-instruments', false)
   .option('-t, --track <track>', 'process only <track>')
   .option('-s, --time-signature <signature>', 'set the time signature (default 4/4)', '4/4')
   .action((game, songString, options) => {
