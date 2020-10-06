@@ -122,6 +122,19 @@ Prints the loop counter each time a conditional branch instruction is encountere
 
 `bpset e8b, 1, {printf "branch type %02x voice counter %02x", b, b@hl; g;}`
 
+### Yamaha register traces
+
+Careful! It spews a lot of data!
+
+`bpset 69c, 1, {printf "Yama write reg %02x data %02x", d, e; g;}`
+
+Only Key commands:
+
+`bpset 69c, d >= 0x28 && d < 0x30, {printf "Yama KEY  reg %02x data %02x", d, e; g;}`
+
+`
+`
+
 ## Percussion instruments in SF2UA
 
 Some sample percussion instruments in the SF2UA ROM
