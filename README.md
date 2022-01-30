@@ -68,7 +68,7 @@ While the Z80 is a little-endian CPU, addresses of tracks and instruments are in
 
 The sound section of a CPS1 game is made up of
 
-* Yamaha YM2151 OPL3 FM Synthesizer for melodies
+* Yamaha YM2151 OPM FM Synthesizer for melodies
 * Oki MSM6295 for game samples and percussion instruments
 * A Z80 CPU to drive these chips.
 
